@@ -23,9 +23,9 @@ export function ListSwitcher({
         <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{dict.lists.activeList}</p>
         <p className="mt-1 text-sm font-semibold text-slate-900">{lists.find((list) => list.id === activeListId)?.name ?? "-"}</p>
       </div>
-      <form action="/api/active-list" method="get" className="grid gap-3">
+      <form action="/api/active-list" method="get" className="grid gap-3" autoComplete="off" suppressHydrationWarning>
         <input type="hidden" name="redirect" value={pathname} />
-        <select name="listId" defaultValue={activeListId ?? ""} className="field">
+        <select name="listId" defaultValue={activeListId ?? ""} className="field" autoComplete="off" suppressHydrationWarning>
           {lists.map((list) => (
             <option key={list.id} value={list.id}>
               {list.name}

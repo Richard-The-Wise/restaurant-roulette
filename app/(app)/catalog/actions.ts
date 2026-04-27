@@ -104,6 +104,21 @@ export async function logVisitAction(formData: FormData) {
   revalidatePath("/roulette");
 }
 
+export async function deleteRestaurantAction(formData: FormData) {
+  const restaurantId = String(formData.get("restaurant_id"));
+  const { supabase, listId } = await getUserScopedRestaurant(restaurantId);
+
+  const { error } = await supabase.from("restaurants").delete().eq("id", restaurantId).eq("list_id", listId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/catalog");
+  revalidatePath("/");
+  revalidatePath("/roulette");
+}
+
 export async function updateRestaurantAction(_: FormState, formData: FormData): Promise<FormState> {
   const locale = await getLocaleFromCookies();
   const dict = getDictionary(locale);

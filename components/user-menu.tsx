@@ -33,7 +33,7 @@ export async function UserMenu({ locale }: { locale: Locale }) {
         <p className="break-all text-sm font-semibold text-slate-900 dark:text-slate-100">{user?.email}</p>
       </div>
 
-      <form action={signOut} className="w-full">
+      <form action={signOut} className="w-full" autoComplete="off" suppressHydrationWarning>
         <button
           type="submit"
           className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-800"

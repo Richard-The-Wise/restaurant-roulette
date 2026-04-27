@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -12,6 +13,28 @@ const authSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8)
 });
+
+function normalizeNextPath(value: FormDataEntryValue | null) {
+  const raw = typeof value === "string" ? value : "/";
+  if (!raw.startsWith("/")) {
+    return "/";
+  }
+
+  return raw;
+}
+
+async function getBaseUrl() {
+  const headerStore = await headers();
+  const forwardedProto = headerStore.get("x-forwarded-proto");
+  const forwardedHost = headerStore.get("x-forwarded-host");
+  const host = forwardedHost ?? headerStore.get("host");
+
+  if (host) {
+    return `${forwardedProto ?? "http"}://${host}`;
+  }
+
+  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+}
 
 export async function signInAction(_: FormState, formData: FormData): Promise<FormState> {
   const locale = await getLocaleFromCookies();
@@ -39,7 +62,7 @@ export async function signInAction(_: FormState, formData: FormData): Promise<Fo
     };
   }
 
-  redirect("/");
+  redirect(normalizeNextPath(formData.get("next")));
 }
 
 export async function signUpAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -59,10 +82,12 @@ export async function signUpAction(_: FormState, formData: FormData): Promise<Fo
   }
 
   const supabase = await createClient();
+  const baseUrl = await getBaseUrl();
+  const next = normalizeNextPath(formData.get("next"));
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/`
+      emailRedirectTo: `${baseUrl}/auth/callback?next=${encodeURIComponent(next)}`
     }
   });
 

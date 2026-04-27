@@ -10,9 +10,9 @@ export default async function RoulettePage() {
   const locale = await getLocaleFromCookies();
   const dict = getDictionary(locale);
   const supabase = await createClient();
-  const { activeList } = await getActiveListForCurrentUser();
+  const { activeList, lists } = await getActiveListForCurrentUser();
 
-  if (!activeList) {
+  if (!activeList || !lists.length) {
     return (
       <EmptyState
         title={dict.lists.title}
@@ -23,15 +23,19 @@ export default async function RoulettePage() {
     );
   }
 
+  const listIds = lists.map((list) => list.id);
+
   const { data: restaurants, error } = await supabase
     .from("restaurants")
     .select("*")
-    .eq("list_id", activeList.id)
+    .in("list_id", listIds)
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
+
+  const activeListRestaurants = restaurants?.filter((restaurant) => restaurant.list_id === activeList.id) ?? [];
 
   return (
     <div className="space-y-6">
@@ -39,8 +43,14 @@ export default async function RoulettePage() {
         <SectionHeading eyebrow={dict.roulette.eyebrow} title={dict.roulette.title} description={dict.roulette.description} />
       </section>
 
-      {restaurants?.length ? (
-        <RouletteWheel restaurants={restaurants} locale={locale} />
+      {activeListRestaurants.length ? (
+        <RouletteWheel
+          restaurants={activeListRestaurants}
+          allRestaurants={restaurants ?? []}
+          lists={lists}
+          activeListId={activeList.id}
+          locale={locale}
+        />
       ) : (
         <EmptyState
           title={dict.roulette.emptyTitle}

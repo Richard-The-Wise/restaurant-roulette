@@ -46,7 +46,7 @@ const dictionaries = {
       lists: "Listas"
     },
     shell: {
-      brandSubtitle: "Tu tablero para decidir la siguiente mesa",
+      brandSubtitle: "Tu aplicacion para decidir la siguiente cita",
       smartShortlistTitle: "Lista inteligente",
       smartShortlistBody:
         "Trae datos desde Google Places y luego completa con tus notas, visitas, etiquetas y favoritos.",
@@ -54,21 +54,19 @@ const dictionaries = {
       currentLanguage: "Idioma actual"
     },
     login: {
-      eyebrow: "Espacio privado de restaurantes",
+      eyebrow: "Restaurant Roulette",
       title: "Construye una lista corta que de verdad quieras visitar.",
       description:
         "Guarda restaurantes prometedores, agrega notas para la siguiente salida y gira la ruleta cuando el grupo no logra decidir.",
-      cards: [
-        ["Autocompletado con Google Places", "Pega un enlace de Maps o un place ID y empieza con datos reales."],
-        ["Listas privadas", "Cada usuario mantiene su propia coleccion protegida con Supabase Auth."],
-        ["Flujo de ruleta", "Gira con todos los lugares, solo los nuevos o tus clasicos mas visitados."]
-      ],
       signInTitle: "Iniciar sesion",
       signInDescription: "Continua con tu cuenta existente.",
       signInButton: "Entrar",
+      googleButton: "Continuar con Google",
       signUpTitle: "Crear cuenta",
       signUpDescription: "Configura un espacio privado para tus lugares guardados.",
       signUpButton: "Crear cuenta",
+      openSignUpButton: "Crear cuenta nueva",
+      closeSignUp: "Cerrar formulario de registro",
       passwordPlaceholder: "Escribe tu contrasena",
       strongPasswordPlaceholder: "Elige una contrasena segura",
       emailPlaceholder: "tu@correo.com"
@@ -78,6 +76,15 @@ const dictionaries = {
       description: "Crea grupos de restaurantes, invita amigos y cambia la lista activa antes de usar la ruleta.",
       activeList: "Lista activa",
       switchList: "Cambiar lista",
+      importTitle: "Importar restaurantes",
+      importDescription: "Copia restaurantes desde otra lista accesible hacia esta lista.",
+      importSourceList: "Lista de origen",
+      importRestaurants: "Restaurantes a importar",
+      importButton: "Importar a esta lista",
+      importEmpty: "Esta lista no tiene restaurantes disponibles para importar.",
+      importSelectedCount: "{count} restaurantes seleccionados",
+      deleteList: "Borrar lista",
+      cannotDeletePersonal: "La lista personal no se puede borrar",
       members: "miembros",
       owner: "Propietario",
       member: "Miembro",
@@ -198,6 +205,7 @@ const dictionaries = {
       favorited: "En favoritos",
       edit: "Editar",
       logVisit: "Registrar visita",
+      delete: "Borrar",
       added: "Agregado",
       notes: "Notas"
     },
@@ -214,10 +222,25 @@ const dictionaries = {
       currentPool: "Pool actual",
       allPool: "Todos los lugares guardados estan en la rueda.",
       unvisitedPool: "Solo se incluyen lugares con cero visitas.",
-      frequentPool: "La ruleta se enfoca en tus lugares mas visitados.",
+      favoritesPool: "Solo se incluyen tus restaurantes marcados como favoritos.",
+      categoryPool: "La ruleta usa la categoria {category}.",
+      categoryPoolEmpty: "Selecciona una categoria para construir el pool.",
+      manualPool: "El pool manual incluye {count} restaurantes elegidos por ti.",
+      manualPoolEmpty: "Selecciona restaurantes manualmente para crear el pool.",
       spinning: "Girando...",
       spinButton: "Girar ruleta",
       openInMaps: "Abrir en Google Maps",
+      categoryLabel: "Categoria para la ruleta",
+      categoryPlaceholder: "Selecciona una categoria",
+      manualPickerButton: "Elegir restaurantes manualmente",
+      manualPickerTitle: "Arma tu pool manual",
+      manualPickerDescription: "Cambia entre listas y ve marcando restaurantes. La seleccion se acumula aunque vengan de listas distintas.",
+      manualSelectionCount: "{count} restaurantes seleccionados",
+      listLabel: "Lista disponible",
+      restaurantLabel: "Restaurantes para el pool",
+      manualPickerEmpty: "Esta lista no tiene restaurantes disponibles.",
+      manualPickerCancel: "Cancelar",
+      manualPickerApply: "Usar seleccion",
       selectedRestaurant: "Restaurante seleccionado",
       selectedPlaceholder: "Gira la rueda y aqui aparecera el restaurante elegido con sus detalles clave.",
       selectedHint: "Usa los filtros primero si quieres un grupo mas acotado.",
@@ -249,7 +272,9 @@ const dictionaries = {
     rouletteFilters: {
       all: "Todos",
       unvisited: "Sin visitar",
-      frequent: "Mas visitados"
+      favorites: "Mis favoritos",
+      category: "Por categoria",
+      manual: "Seleccion manual"
     }
   },
   en: {
@@ -295,21 +320,19 @@ const dictionaries = {
       currentLanguage: "Current language"
     },
     login: {
-      eyebrow: "Private restaurant workspace",
+      eyebrow: "Restaurant Roulette",
       title: "Build a shortlist worth actually visiting.",
       description:
         "Save promising restaurants, keep notes for the next outing, and spin a polished roulette when the group hits decision fatigue.",
-      cards: [
-        ["Google Places prefills", "Paste a Maps URL or place ID and start with real data."],
-        ["Private lists", "Each user keeps their own restaurant collection behind Supabase Auth."],
-        ["Roulette flow", "Spin all places, only new ones, or your most-visited staples."]
-      ],
       signInTitle: "Sign in",
       signInDescription: "Continue with your existing account.",
       signInButton: "Sign in",
+      googleButton: "Continue with Google",
       signUpTitle: "Create account",
       signUpDescription: "Set up a private workspace for your saved places.",
       signUpButton: "Create account",
+      openSignUpButton: "Create new account",
+      closeSignUp: "Close sign-up form",
       passwordPlaceholder: "Enter your password",
       strongPasswordPlaceholder: "Choose a strong password",
       emailPlaceholder: "you@example.com"
@@ -319,6 +342,15 @@ const dictionaries = {
       description: "Create restaurant groups, invite friends, and switch the active list before using the roulette.",
       activeList: "Active list",
       switchList: "Switch list",
+      importTitle: "Import restaurants",
+      importDescription: "Copy restaurants from another accessible list into this list.",
+      importSourceList: "Source list",
+      importRestaurants: "Restaurants to import",
+      importButton: "Import into this list",
+      importEmpty: "This list does not have restaurants available to import.",
+      importSelectedCount: "{count} restaurants selected",
+      deleteList: "Delete list",
+      cannotDeletePersonal: "The personal list cannot be deleted",
       members: "members",
       owner: "Owner",
       member: "Member",
@@ -439,6 +471,7 @@ const dictionaries = {
       favorited: "Favorited",
       edit: "Edit",
       logVisit: "Log visit",
+      delete: "Delete",
       added: "Added",
       notes: "Notes"
     },
@@ -454,10 +487,25 @@ const dictionaries = {
       currentPool: "Current pool",
       allPool: "Everything you have saved is on the wheel.",
       unvisitedPool: "Only places with zero visits are included.",
-      frequentPool: "The roulette narrows to your most-visited options.",
+      favoritesPool: "Only your favorited restaurants are included.",
+      categoryPool: "The wheel is using the {category} category.",
+      categoryPoolEmpty: "Choose a category to build the pool.",
+      manualPool: "Your manual pool currently includes {count} restaurants.",
+      manualPoolEmpty: "Select restaurants manually to build the pool.",
       spinning: "Spinning...",
       spinButton: "Spin roulette",
       openInMaps: "Open in Google Maps",
+      categoryLabel: "Roulette category",
+      categoryPlaceholder: "Choose a category",
+      manualPickerButton: "Pick restaurants manually",
+      manualPickerTitle: "Build your manual pool",
+      manualPickerDescription: "Switch between lists and keep checking restaurants. The selection accumulates across different lists.",
+      manualSelectionCount: "{count} restaurants selected",
+      listLabel: "Available list",
+      restaurantLabel: "Restaurants in pool",
+      manualPickerEmpty: "This list does not have restaurants available.",
+      manualPickerCancel: "Cancel",
+      manualPickerApply: "Use selection",
       selectedRestaurant: "Selected restaurant",
       selectedPlaceholder: "Spin the wheel and the chosen restaurant will land here with the key details you need.",
       selectedHint: "Use the filter chips first if you want a tighter pool.",
@@ -489,7 +537,9 @@ const dictionaries = {
     rouletteFilters: {
       all: "All places",
       unvisited: "Only unvisited",
-      frequent: "Most visited"
+      favorites: "Favorites",
+      category: "By category",
+      manual: "Manual selection"
     }
   }
 } as const;
@@ -523,6 +573,8 @@ export function getRouletteFilters(locale: Locale) {
   return [
     { value: "all", label: dict.rouletteFilters.all },
     { value: "unvisited", label: dict.rouletteFilters.unvisited },
-    { value: "frequent", label: dict.rouletteFilters.frequent }
+    { value: "favorites", label: dict.rouletteFilters.favorites },
+    { value: "category", label: dict.rouletteFilters.category },
+    { value: "manual", label: dict.rouletteFilters.manual }
   ] as const;
 }

@@ -134,7 +134,7 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <form action={formAction} className="surface-panel space-y-6 px-5 py-5 sm:px-6 sm:py-6">
+      <form action={formAction} className="surface-panel space-y-6 px-5 py-5 sm:px-6 sm:py-6" autoComplete="off" suppressHydrationWarning>
         <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-white/10 p-3">
@@ -151,6 +151,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               onChange={(event) => setLookupInput(event.target.value)}
               className="field border-white/10 bg-white/95 text-slate-900"
               placeholder="https://maps.google.com/... or ChIJ..."
+              autoComplete="off"
+              suppressHydrationWarning
             />
             <button
               type="button"
@@ -165,22 +167,38 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
           {lookupError ? <p className="text-sm text-red-200">{lookupError}</p> : null}
         </div>
 
-        <input type="hidden" name="google_place_id" value={draft.google_place_id} readOnly />
-        <input type="hidden" name="google_maps_url" value={draft.google_maps_url} readOnly />
-        {mode === "edit" && restaurant ? <input type="hidden" name="restaurant_id" value={restaurant.id} readOnly /> : null}
+        <input type="hidden" name="google_place_id" value={draft.google_place_id} readOnly suppressHydrationWarning />
+        <input type="hidden" name="google_maps_url" value={draft.google_maps_url} readOnly suppressHydrationWarning />
+        {mode === "edit" && restaurant ? <input type="hidden" name="restaurant_id" value={restaurant.id} readOnly suppressHydrationWarning /> : null}
 
         <div className="grid gap-5 md:grid-cols-2">
           <div>
             <label className="label" htmlFor="name">
               {dict.add.name}
             </label>
-            <input id="name" name="name" className="field" value={draft.name} onChange={(event) => updateField("name", event.target.value)} />
+            <input
+              id="name"
+              name="name"
+              className="field"
+              value={draft.name}
+              onChange={(event) => updateField("name", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
+            />
           </div>
           <div>
             <label className="label" htmlFor="category">
               {dict.add.category}
             </label>
-            <input id="category" name="category" className="field" value={draft.category} onChange={(event) => updateField("category", event.target.value)} />
+            <input
+              id="category"
+              name="category"
+              className="field"
+              value={draft.category}
+              onChange={(event) => updateField("category", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
+            />
           </div>
           <div>
             <label className="label" htmlFor="cuisine_type">
@@ -192,6 +210,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               className="field"
               value={draft.cuisine_type}
               onChange={(event) => updateField("cuisine_type", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
             />
           </div>
           <div>
@@ -204,6 +224,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               className="field"
               value={draft.price_level}
               onChange={(event) => updateField("price_level", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
             >
               <option value="">{dict.add.selectPriceLevel}</option>
               {[1, 2, 3, 4, 5].map((level) => (
@@ -227,6 +249,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               className="field"
               value={draft.rating}
               onChange={(event) => updateField("rating", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
             />
           </div>
           <div>
@@ -241,6 +265,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               className="field"
               value={draft.visit_count}
               onChange={(event) => updateField("visit_count", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
             />
           </div>
           <div>
@@ -254,6 +280,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               className="field"
               value={draft.last_visited}
               onChange={(event) => updateField("last_visited", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
             />
           </div>
           <div>
@@ -267,6 +295,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
               placeholder={dict.add.tagsPlaceholder}
               value={draft.tags}
               onChange={(event) => updateField("tags", event.target.value)}
+              autoComplete="off"
+              suppressHydrationWarning
             />
           </div>
         </div>
@@ -281,6 +311,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
             className="field min-h-36 resize-y"
             value={draft.opening_hours}
             onChange={(event) => updateField("opening_hours", event.target.value)}
+            autoComplete="off"
+            suppressHydrationWarning
           />
         </div>
 
@@ -295,6 +327,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
             placeholder={dict.add.notesPlaceholder}
             value={draft.notes}
             onChange={(event) => updateField("notes", event.target.value)}
+            autoComplete="off"
+            suppressHydrationWarning
           />
         </div>
 
@@ -305,6 +339,8 @@ export function AddRestaurantForm({ locale, mode = "create", restaurant }: AddRe
             checked={draft.is_favorite}
             onChange={(event) => updateField("is_favorite", event.target.checked)}
             className="h-4 w-4 rounded border-slate-300 text-aurora-600 focus:ring-aurora-500"
+            autoComplete="off"
+            suppressHydrationWarning
           />
           {dict.add.favorite}
         </label>

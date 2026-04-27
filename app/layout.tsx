@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { IBM_Plex_Serif, Manrope } from "next/font/google";
 
@@ -28,6 +28,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content"
+};
+
 export default async function RootLayout({
   children
 }: Readonly<{
@@ -39,9 +46,13 @@ export default async function RootLayout({
   const theme = isTheme(themeCookie) ? themeCookie : DEFAULT_THEME;
 
   return (
-    <html lang={locale} className={`${bodyFont.variable} ${displayFont.variable} ${theme === "dark" ? "dark" : ""}`}>
-      <body className="font-[var(--font-body)]">
-        <div className="min-h-screen bg-grid-fade bg-[size:32px_32px]">{children}</div>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${bodyFont.variable} ${displayFont.variable} ${theme === "dark" ? "dark" : ""}`}
+    >
+      <body className="overflow-x-clip font-[var(--font-body)]">
+        <div className="min-h-screen overflow-x-clip bg-grid-fade bg-[size:32px_32px]">{children}</div>
       </body>
     </html>
   );

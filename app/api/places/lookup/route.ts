@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   try {
     const body = requestSchema.parse(await request.json());
-    const place = await lookupRestaurantPlace(body.input, apiKey);
+    const place = await lookupRestaurantPlace(body.input, apiKey, locale);
     return NextResponse.json({ place });
   } catch (error) {
     return NextResponse.json(

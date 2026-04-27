@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/types/database";
 
-const PUBLIC_PATHS = ["/login", "/api/locale", "/api/theme"];
+const PUBLIC_PATHS = ["/login", "/api/locale", "/api/theme", "/auth/callback", "/auth/google"];
 const AUTH_ONLY_PUBLIC_PATHS = ["/login"];
 
 export async function updateSession(request: NextRequest) {

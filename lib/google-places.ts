@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { titleCase } from "@/lib/utils";
+import type { Locale } from "@/lib/i18n";
+import { normalizeWeekdayDescription, titleCase } from "@/lib/utils";
 import type { OpeningHoursPayload, PlaceLookupResult } from "@/types/domain";
 
 const lookupSchema = z.object({
@@ -9,25 +10,47 @@ const lookupSchema = z.object({
 
 const PLACE_ID_PATTERN = /^(ChI|Ei|GhI|Iho|Eic)[A-Za-z0-9_-]+$/;
 
-const typeCuisineMap: Record<string, string> = {
-  pizza_restaurant: "Pizza",
-  sushi_restaurant: "Sushi",
-  italian_restaurant: "Italian",
-  mexican_restaurant: "Mexican",
-  chinese_restaurant: "Chinese",
-  japanese_restaurant: "Japanese",
-  indian_restaurant: "Indian",
-  thai_restaurant: "Thai",
-  korean_restaurant: "Korean",
-  mediterranean_restaurant: "Mediterranean",
-  seafood_restaurant: "Seafood",
-  steak_house: "Steakhouse",
-  hamburger_restaurant: "Burgers",
-  breakfast_restaurant: "Breakfast",
-  brunch_restaurant: "Brunch",
-  cafe: "Cafe",
-  coffee_shop: "Coffee",
-  bakery: "Bakery"
+const typeCuisineMap: Record<Locale, Record<string, string>> = {
+  es: {
+    pizza_restaurant: "Pizza",
+    sushi_restaurant: "Sushi",
+    italian_restaurant: "Italiana",
+    mexican_restaurant: "Mexicana",
+    chinese_restaurant: "China",
+    japanese_restaurant: "Japonesa",
+    indian_restaurant: "India",
+    thai_restaurant: "Tailandesa",
+    korean_restaurant: "Coreana",
+    mediterranean_restaurant: "Mediterranea",
+    seafood_restaurant: "Mariscos",
+    steak_house: "Cortes",
+    hamburger_restaurant: "Hamburguesas",
+    breakfast_restaurant: "Desayunos",
+    brunch_restaurant: "Brunch",
+    cafe: "Cafe",
+    coffee_shop: "Cafe",
+    bakery: "Panaderia"
+  },
+  en: {
+    pizza_restaurant: "Pizza",
+    sushi_restaurant: "Sushi",
+    italian_restaurant: "Italian",
+    mexican_restaurant: "Mexican",
+    chinese_restaurant: "Chinese",
+    japanese_restaurant: "Japanese",
+    indian_restaurant: "Indian",
+    thai_restaurant: "Thai",
+    korean_restaurant: "Korean",
+    mediterranean_restaurant: "Mediterranean",
+    seafood_restaurant: "Seafood",
+    steak_house: "Steakhouse",
+    hamburger_restaurant: "Burgers",
+    breakfast_restaurant: "Breakfast",
+    brunch_restaurant: "Brunch",
+    cafe: "Cafe",
+    coffee_shop: "Coffee",
+    bakery: "Bakery"
+  }
 };
 
 function mapPriceLevel(value: unknown) {
@@ -48,6 +71,36 @@ function mapPriceLevel(value: unknown) {
   return null;
 }
 
+async function resolveGoogleMapsUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const isGoogleMapsHost =
+      url.hostname.includes("google.com") || url.hostname.includes("goo.gl") || url.hostname.includes("googleusercontent.com");
+
+    if (!isGoogleMapsHost) {
+      return value;
+    }
+
+    const response = await fetch(value, {
+      method: "GET",
+      redirect: "follow",
+      cache: "no-store"
+    });
+
+    return response.url || value;
+  } catch {
+    return value;
+  }
+}
+
+function cleanTextQuery(value: string) {
+  return value
+    .replace(/\+/g, " ")
+    .replace(/\s*[-|]\s*Google Maps$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function extractQueryFromMapsUrl(value: string) {
   try {
     const url = new URL(value);
@@ -65,12 +118,25 @@ function extractQueryFromMapsUrl(value: string) {
     }
 
     if (q) {
-      return { placeId: null, textQuery: q };
+      return { placeId: null, textQuery: cleanTextQuery(q) };
     }
 
     const placePathMatch = decodeURIComponent(url.pathname).match(/\/place\/([^/]+)/i);
     if (placePathMatch?.[1]) {
-      return { placeId: null, textQuery: placePathMatch[1].replaceAll("+", " ") };
+      return { placeId: null, textQuery: cleanTextQuery(placePathMatch[1]) };
+    }
+
+    const pathSegments = decodeURIComponent(url.pathname)
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+
+    const lastMeaningfulSegment = [...pathSegments]
+      .reverse()
+      .find((segment) => !segment.startsWith("@") && !segment.startsWith("data=") && segment !== "maps");
+
+    if (lastMeaningfulSegment) {
+      return { placeId: null, textQuery: cleanTextQuery(lastMeaningfulSegment) };
     }
   } catch {
     return null;
@@ -97,7 +163,7 @@ async function googleFetch<T>(input: RequestInfo, init: RequestInit): Promise<T>
   return response.json() as Promise<T>;
 }
 
-async function searchPlaceId(textQuery: string, apiKey: string) {
+async function searchPlaceId(textQuery: string, apiKey: string, locale: Locale) {
   const payload = await googleFetch<{
     places?: Array<{ id: string }>;
   }>("https://places.googleapis.com/v1/places:searchText", {
@@ -108,17 +174,36 @@ async function searchPlaceId(textQuery: string, apiKey: string) {
     },
     body: JSON.stringify({
       textQuery,
-      includedType: "restaurant"
+      languageCode: locale
     })
   });
 
-  return payload.places?.[0]?.id ?? null;
+  if (payload.places?.[0]?.id) {
+    return payload.places[0].id;
+  }
+
+  const fallbackPayload = await googleFetch<{
+    places?: Array<{ id: string }>;
+  }>("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "places.id"
+    },
+    body: JSON.stringify({
+      textQuery: `${textQuery} restaurant`,
+      languageCode: locale
+    })
+  });
+
+  return fallbackPayload.places?.[0]?.id ?? null;
 }
 
-function deriveCuisine(types: string[] | undefined, fallback: string | null) {
-  const matched = types?.find((type) => typeCuisineMap[type]);
+function deriveCuisine(types: string[] | undefined, fallback: string | null, locale: Locale) {
+  const cuisineMap = typeCuisineMap[locale];
+  const matched = types?.find((type) => cuisineMap[type]);
   if (matched) {
-    return typeCuisineMap[matched];
+    return cuisineMap[matched];
   }
 
   if (fallback) {
@@ -132,27 +217,33 @@ function deriveCuisine(types: string[] | undefined, fallback: string | null) {
 function normalizeOpeningHours(raw: {
   weekdayDescriptions?: string[];
   weekday_text?: string[];
-} | null): OpeningHoursPayload | null {
+} | null, locale: Locale): OpeningHoursPayload | null {
   const descriptions = raw?.weekdayDescriptions ?? raw?.weekday_text ?? [];
   if (!descriptions.length) {
     return null;
   }
 
   return {
-    weekdayDescriptions: descriptions
+    weekdayDescriptions: descriptions.map((line) => normalizeWeekdayDescription(line, locale))
   };
 }
 
-export async function lookupRestaurantPlace(rawInput: string, apiKey: string): Promise<PlaceLookupResult> {
+export async function lookupRestaurantPlace(rawInput: string, apiKey: string, locale: Locale): Promise<PlaceLookupResult> {
   const { input } = lookupSchema.parse({ input: rawInput.trim() });
+  const resolvedInput = input.startsWith("http") ? await resolveGoogleMapsUrl(input) : input;
 
-  const directMatch = PLACE_ID_PATTERN.test(input) ? { placeId: input, textQuery: null } : extractQueryFromMapsUrl(input);
-  const textQuery = directMatch?.textQuery ?? input;
+  const directMatch = PLACE_ID_PATTERN.test(resolvedInput)
+    ? { placeId: resolvedInput, textQuery: null }
+    : extractQueryFromMapsUrl(resolvedInput);
+  const textQuery = cleanTextQuery(directMatch?.textQuery ?? resolvedInput);
 
-  const placeId = directMatch?.placeId ?? (await searchPlaceId(textQuery, apiKey));
+  const placeId = directMatch?.placeId ?? (await searchPlaceId(textQuery, apiKey, locale));
   if (!placeId) {
     throw new Error("No matching Google Place could be found.");
   }
+
+  const detailsUrl = new URL(`https://places.googleapis.com/v1/places/${placeId}`);
+  detailsUrl.searchParams.set("languageCode", locale);
 
   const details = await googleFetch<{
     id: string;
@@ -163,17 +254,16 @@ export async function lookupRestaurantPlace(rawInput: string, apiKey: string): P
     regularOpeningHours?: { weekdayDescriptions?: string[] };
     rating?: number;
     priceLevel?: string | number;
-  }>(`https://places.googleapis.com/v1/places/${placeId}`, {
+  }>(detailsUrl.toString(), {
     method: "GET",
     headers: {
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask":
-        "id,displayName,primaryTypeDisplayName,types,googleMapsUri,regularOpeningHours,rating,priceLevel"
+      "X-Goog-FieldMask": "id,displayName,primaryTypeDisplayName,types,googleMapsUri,regularOpeningHours,rating,priceLevel"
     }
   });
 
-  const category = details.primaryTypeDisplayName?.text ?? "Restaurant";
-  const cuisineType = deriveCuisine(details.types, details.primaryTypeDisplayName?.text ?? null);
+  const category = details.primaryTypeDisplayName?.text ?? (locale === "es" ? "Restaurante" : "Restaurant");
+  const cuisineType = deriveCuisine(details.types, details.primaryTypeDisplayName?.text ?? null, locale);
 
   return {
     googlePlaceId: details.id,
@@ -181,7 +271,7 @@ export async function lookupRestaurantPlace(rawInput: string, apiKey: string): P
     name: details.displayName?.text ?? textQuery,
     category,
     cuisineType,
-    openingHours: normalizeOpeningHours(details.regularOpeningHours ?? null),
+    openingHours: normalizeOpeningHours(details.regularOpeningHours ?? null, locale),
     rating: typeof details.rating === "number" ? Number(details.rating.toFixed(1)) : null,
     priceLevel: mapPriceLevel(details.priceLevel)
   };

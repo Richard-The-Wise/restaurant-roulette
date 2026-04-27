@@ -173,6 +173,15 @@ for update
 using (created_by = auth.uid() or public.is_list_owner(id, auth.uid()))
 with check (created_by = auth.uid() or public.is_list_owner(id, auth.uid()));
 
+drop policy if exists "Owners can delete lists" on public.restaurant_lists;
+create policy "Owners can delete lists"
+on public.restaurant_lists
+for delete
+using (
+  not is_personal
+  and (created_by = auth.uid() or public.is_list_owner(id, auth.uid()))
+);
+
 drop policy if exists "Users can view memberships for accessible lists" on public.list_memberships;
 create policy "Users can view memberships for accessible lists"
 on public.list_memberships

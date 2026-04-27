@@ -11,7 +11,7 @@ export function SiteNav({ locale }: { locale: Locale }) {
   const items = getNavItems(locale);
 
   return (
-    <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1">
+    <nav className="grid grid-cols-1 gap-2">
       {items.map((item) => {
         const active = pathname === item.href;
         const Icon = item.icon;
