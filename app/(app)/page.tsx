@@ -145,21 +145,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid gap-6">
-          <section className="surface-panel px-5 py-5 sm:px-6 sm:py-6">
-            <h2 className="text-xl font-semibold text-slate-950">{dict.dashboard.playbook}</h2>
-            <div className="mt-5 space-y-4">
-              {dict.tips.map((tip, index) => (
-                <div key={tip} className="flex gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
-                    {index + 1}
-                  </div>
-                  <p className="text-sm leading-6 text-slate-600">{tip}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
+        <div className="grid gap-6 content-start">
           <section className="surface-panel px-5 py-5 sm:px-6 sm:py-6">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Tags className="h-4 w-4 text-aurora-600" />
@@ -176,6 +162,10 @@ export default async function DashboardPage() {
                 <p className="text-sm text-slate-500">{dict.dashboard.addTagsHint}</p>
               )}
             </div>
+
+            {topTagEntries.length ? (
+              <p className="mt-4 text-sm text-slate-500">{dict.dashboard.addTagsHint}</p>
+            ) : null}
           </section>
         </div>
       </section>

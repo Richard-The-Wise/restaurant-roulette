@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Ellipsis, Heart, HeartCrack, MapPinned, Pencil, Search, Shuffle, Sparkles, Star, Trash2, UtensilsCrossed } from "lucide-react";
+import { ChevronDown, Ellipsis, Heart, HeartCrack, MapPinned, Pencil, Search, Shuffle, SlidersHorizontal, Sparkles, Star, Trash2, UtensilsCrossed } from "lucide-react";
 
 import { deleteRestaurantAction, logVisitAction, toggleFavoriteAction } from "@/app/(app)/catalog/actions";
 import { ActionSubmitButton } from "@/components/action-submit-button";
@@ -30,6 +30,7 @@ export function CatalogView({ restaurants, locale }: CatalogViewProps) {
   const [favoriteFilter, setFavoriteFilter] = useState("all");
   const [visitFilter, setVisitFilter] = useState("all");
   const [sort, setSort] = useState<SortValue>("recent");
+  const [showFilters, setShowFilters] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const actionSheetRef = useRef<HTMLDialogElement | null>(null);
 
@@ -82,84 +83,100 @@ export function CatalogView({ restaurants, locale }: CatalogViewProps) {
   return (
     <div className="space-y-6">
       <section className="surface-panel px-5 py-5 sm:px-6 sm:py-6">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_repeat(6,minmax(0,1fr))]">
-          <label className="block">
-            <span className="label">{dict.catalog.search}</span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="field pl-11"
-                placeholder={dict.catalog.searchPlaceholder}
-                autoComplete="off"
-                suppressHydrationWarning
-              />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <label className="block flex-1">
+              <span className="label">{dict.catalog.search}</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="field pl-11"
+                  placeholder={dict.catalog.searchPlaceholder}
+                  autoComplete="off"
+                  suppressHydrationWarning
+                />
+              </div>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setShowFilters((current) => !current)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filtros
+              <ChevronDown className={cn("h-4 w-4 transition", showFilters && "rotate-180")} />
+            </button>
+          </div>
+
+          {showFilters ? (
+            <div className="grid gap-4 border-t border-slate-200 pt-4 dark:border-slate-800 xl:grid-cols-[repeat(6,minmax(0,1fr))]">
+              <label className="block">
+                <span className="label">{dict.add.category}</span>
+                <select className="field" value={category} onChange={(event) => setCategory(event.target.value)} autoComplete="off" suppressHydrationWarning>
+                  <option value="all">{dict.catalog.allCategories}</option>
+                  {categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="label">{dict.add.cuisine}</span>
+                <select className="field" value={cuisine} onChange={(event) => setCuisine(event.target.value)} autoComplete="off" suppressHydrationWarning>
+                  <option value="all">{dict.catalog.allCuisineTypes}</option>
+                  {cuisines.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="label">{dict.catalog.minimumRating}</span>
+                <select className="field" value={rating} onChange={(event) => setRating(event.target.value)} autoComplete="off" suppressHydrationWarning>
+                  <option value="all">{dict.catalog.anyRating}</option>
+                  <option value="4.5">4.5+</option>
+                  <option value="4">4.0+</option>
+                  <option value="3.5">3.5+</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="label">{dict.add.priceLevel}</span>
+                <select className="field" value={priceLevel} onChange={(event) => setPriceLevel(event.target.value)} autoComplete="off" suppressHydrationWarning>
+                  <option value="all">{dict.catalog.allPriceLevels}</option>
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <option key={level} value={String(level)}>
+                      {"$".repeat(level)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="label">{dict.catalog.favoritesFilter}</span>
+                <select className="field" value={favoriteFilter} onChange={(event) => setFavoriteFilter(event.target.value)} autoComplete="off" suppressHydrationWarning>
+                  <option value="all">{dict.catalog.allFavorites}</option>
+                  <option value="favorite">{dict.catalog.favoritesOnly}</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="label">{dict.catalog.visitFilter}</span>
+                <select className="field" value={visitFilter} onChange={(event) => setVisitFilter(event.target.value)} autoComplete="off" suppressHydrationWarning>
+                  <option value="all">{dict.catalog.allVisits}</option>
+                  <option value="unvisited">{dict.catalog.unvisitedOnly}</option>
+                  <option value="visited">{dict.catalog.visitedOnly}</option>
+                </select>
+              </label>
             </div>
-          </label>
-
-          <label className="block">
-            <span className="label">{dict.add.category}</span>
-            <select className="field" value={category} onChange={(event) => setCategory(event.target.value)} autoComplete="off" suppressHydrationWarning>
-              <option value="all">{dict.catalog.allCategories}</option>
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="label">{dict.add.cuisine}</span>
-            <select className="field" value={cuisine} onChange={(event) => setCuisine(event.target.value)} autoComplete="off" suppressHydrationWarning>
-              <option value="all">{dict.catalog.allCuisineTypes}</option>
-              {cuisines.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="label">{dict.catalog.minimumRating}</span>
-            <select className="field" value={rating} onChange={(event) => setRating(event.target.value)} autoComplete="off" suppressHydrationWarning>
-              <option value="all">{dict.catalog.anyRating}</option>
-              <option value="4.5">4.5+</option>
-              <option value="4">4.0+</option>
-              <option value="3.5">3.5+</option>
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="label">{dict.add.priceLevel}</span>
-            <select className="field" value={priceLevel} onChange={(event) => setPriceLevel(event.target.value)} autoComplete="off" suppressHydrationWarning>
-              <option value="all">{dict.catalog.allPriceLevels}</option>
-              {[1, 2, 3, 4, 5].map((level) => (
-                <option key={level} value={String(level)}>
-                  {"$".repeat(level)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="label">{dict.catalog.favoritesFilter}</span>
-            <select className="field" value={favoriteFilter} onChange={(event) => setFavoriteFilter(event.target.value)} autoComplete="off" suppressHydrationWarning>
-              <option value="all">{dict.catalog.allFavorites}</option>
-              <option value="favorite">{dict.catalog.favoritesOnly}</option>
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="label">{dict.catalog.visitFilter}</span>
-            <select className="field" value={visitFilter} onChange={(event) => setVisitFilter(event.target.value)} autoComplete="off" suppressHydrationWarning>
-              <option value="all">{dict.catalog.allVisits}</option>
-              <option value="unvisited">{dict.catalog.unvisitedOnly}</option>
-              <option value="visited">{dict.catalog.visitedOnly}</option>
-            </select>
-          </label>
+          ) : null}
         </div>
 
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

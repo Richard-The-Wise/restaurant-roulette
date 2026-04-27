@@ -27,11 +27,32 @@ const importRestaurantsSchema = z.object({
   restaurant_ids: z.array(z.string().uuid()).min(1)
 });
 
+function buildListsRedirect(status: "success" | "error", message: string) {
+  return `/lists?status=${encodeURIComponent(status)}&message=${encodeURIComponent(message)}`;
+}
+
+function humanizeListError(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("list_invitations_list_id_email_key") ||
+    (normalized.includes("duplicate key value") && normalized.includes("list_invitations"))
+  ) {
+    return "Esa persona ya tiene una invitacion pendiente para esta lista.";
+  }
+
+  return message;
+}
+
 export async function createListAction(formData: FormData) {
-  const parsed = createListSchema.parse({
+  const parsed = createListSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description")
   });
+
+  if (!parsed.success) {
+    redirect(buildListsRedirect("error", "Revisa el nombre y la descripcion de la lista."));
+  }
 
   const supabase = await createClient();
   const {
@@ -39,33 +60,45 @@ export async function createListAction(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Not authenticated");
+    redirect(buildListsRedirect("error", "Tu sesion expiro. Inicia sesion nuevamente."));
   }
 
   const { data: list, error } = await supabase
     .from("restaurant_lists")
     .insert({
       created_by: user.id,
-      name: parsed.name,
-      description: parsed.description || null,
+      name: parsed.data.name,
+      description: parsed.data.description || null,
       is_personal: false
     })
     .select("*")
     .single();
 
   if (error || !list) {
-    throw new Error(error?.message ?? "Unable to create list");
+    redirect(buildListsRedirect("error", error?.message ?? "No se pudo crear la lista."));
   }
 
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_LIST_COOKIE, list.id, {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365
+  });
+
   revalidatePath("/lists");
-  redirect(`/api/active-list?listId=${list.id}&redirect=/lists`);
+  redirect(buildListsRedirect("success", "Lista creada correctamente."));
 }
 
 export async function inviteToListAction(formData: FormData) {
-  const parsed = inviteSchema.parse({
+  const parsed = inviteSchema.safeParse({
     list_id: formData.get("list_id"),
     email: String(formData.get("email") ?? "").trim().toLowerCase()
   });
+
+  if (!parsed.success) {
+    redirect(buildListsRedirect("error", "Revisa el correo y la lista seleccionada."));
+  }
 
   const supabase = await createClient();
   const {
@@ -73,21 +106,22 @@ export async function inviteToListAction(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Not authenticated");
+    redirect(buildListsRedirect("error", "Tu sesion expiro. Inicia sesion nuevamente."));
   }
 
   const { error } = await supabase.from("list_invitations").upsert({
-    list_id: parsed.list_id,
-    email: parsed.email,
+    list_id: parsed.data.list_id,
+    email: parsed.data.email,
     invited_by: user.id,
     status: "pending"
   });
 
   if (error) {
-    throw new Error(error.message);
+    redirect(buildListsRedirect("error", humanizeListError(error.message)));
   }
 
   revalidatePath("/lists");
+  redirect(buildListsRedirect("success", "Invitacion enviada correctamente."));
 }
 
 export async function acceptInvitationAction(formData: FormData) {
@@ -98,14 +132,14 @@ export async function acceptInvitationAction(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user?.email) {
-    throw new Error("Not authenticated");
+    redirect(buildListsRedirect("error", "Tu sesion expiro. Inicia sesion nuevamente."));
   }
 
   const pendingInvitations = await getPendingInvitationsForCurrentUser();
   const invitation = pendingInvitations.find((item) => item.id === invitationId);
 
   if (!invitation) {
-    throw new Error("Invitation not found");
+    redirect(buildListsRedirect("error", "No se encontro la invitacion."));
   }
 
   const { error: membershipError } = await supabase.from("list_memberships").insert({
@@ -116,7 +150,7 @@ export async function acceptInvitationAction(formData: FormData) {
   });
 
   if (membershipError && !membershipError.message.includes("duplicate")) {
-    throw new Error(membershipError.message);
+    redirect(buildListsRedirect("error", membershipError.message));
   }
 
   const { error: invitationError } = await supabase
@@ -125,11 +159,19 @@ export async function acceptInvitationAction(formData: FormData) {
     .eq("id", invitation.id);
 
   if (invitationError) {
-    throw new Error(invitationError.message);
+    redirect(buildListsRedirect("error", invitationError.message));
   }
 
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_LIST_COOKIE, invitation.list_id, {
+    httpOnly: false,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365
+  });
+
   revalidatePath("/lists");
-  redirect(`/api/active-list?listId=${invitation.list_id}&redirect=/lists`);
+  redirect(buildListsRedirect("success", "Invitacion aceptada correctamente."));
 }
 
 export async function deleteListAction(formData: FormData) {

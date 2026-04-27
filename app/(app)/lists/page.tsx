@@ -7,9 +7,16 @@ import { getAccessibleListsForCurrentUser, getActiveListForCurrentUser, getPendi
 import { getLocaleFromCookies } from "@/lib/locale";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ListsPage() {
+export default async function ListsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ status?: string; message?: string }>;
+}) {
   const locale = await getLocaleFromCookies();
   const dict = getDictionary(locale);
+  const resolvedSearchParams = await searchParams;
+  const feedbackStatus = resolvedSearchParams.status === "success" ? "success" : resolvedSearchParams.status === "error" ? "error" : null;
+  const feedbackMessage = resolvedSearchParams.message ?? "";
   const { lists, memberships } = await getAccessibleListsForCurrentUser();
   const { activeList } = await getActiveListForCurrentUser();
   const pendingInvitations = await getPendingInvitationsForCurrentUser();
@@ -20,8 +27,15 @@ export default async function ListsPage() {
   const { data: restaurants } = lists.length
     ? await supabase.from("restaurants").select("id,list_id,name,category,cuisine_type").in("list_id", lists.map((list) => list.id))
     : { data: [] };
+  const pendingInvitationListIds = Array.from(new Set(pendingInvitations.map((invitation) => invitation.list_id)));
+  const { data: pendingInvitationLists } = pendingInvitationListIds.length
+    ? await supabase.from("restaurant_lists").select("id,name,description").in("id", pendingInvitationListIds)
+    : { data: [] };
   const membersCountByList = Object.fromEntries(
     lists.map((list) => [list.id, allMemberships?.filter((item) => item.list_id === list.id).length ?? 0])
+  );
+  const pendingInvitationListMap = Object.fromEntries(
+    (pendingInvitationLists ?? []).map((list) => [list.id, list])
   );
 
   return (
@@ -29,6 +43,18 @@ export default async function ListsPage() {
       <section className="shell-panel px-5 py-5 sm:px-8 sm:py-6">
         <SectionHeading eyebrow={dict.nav.lists} title={dict.lists.title} description={dict.lists.description} />
       </section>
+
+      {feedbackStatus && feedbackMessage ? (
+        <section
+          className={
+            feedbackStatus === "success"
+              ? "rounded-3xl border border-aurora-200 bg-aurora-50 px-5 py-4 text-sm font-semibold text-aurora-800 dark:border-emerald-400/35 dark:bg-emerald-950/45 dark:text-emerald-50"
+              : "rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-800 dark:border-red-400/35 dark:bg-red-950/45 dark:text-red-50"
+          }
+        >
+          {feedbackMessage}
+        </section>
+      ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
@@ -50,7 +76,14 @@ export default async function ListsPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{invitation.email}</p>
-                        <p className="text-sm text-slate-500">{invitation.list_id}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          <span className="font-semibold text-slate-800 dark:text-slate-50">
+                            {pendingInvitationListMap[invitation.list_id]?.name ?? dict.lists.inviteList}
+                          </span>
+                          {pendingInvitationListMap[invitation.list_id]?.description
+                            ? ` - ${pendingInvitationListMap[invitation.list_id]?.description}`
+                            : ""}
+                        </p>
                       </div>
                       <form action={acceptInvitationAction} autoComplete="off" suppressHydrationWarning>
                         <input type="hidden" name="invitation_id" value={invitation.id} suppressHydrationWarning />

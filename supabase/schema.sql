@@ -158,7 +158,17 @@ drop policy if exists "Users can view accessible lists" on public.restaurant_lis
 create policy "Users can view accessible lists"
 on public.restaurant_lists
 for select
-using (created_by = auth.uid() or public.is_list_member(id, auth.uid()));
+using (
+  created_by = auth.uid()
+  or public.is_list_member(id, auth.uid())
+  or exists (
+    select 1
+    from public.list_invitations
+    where list_invitations.list_id = restaurant_lists.id
+      and lower(list_invitations.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+      and list_invitations.status = 'pending'
+  )
+);
 
 drop policy if exists "Users can create lists" on public.restaurant_lists;
 create policy "Users can create lists"

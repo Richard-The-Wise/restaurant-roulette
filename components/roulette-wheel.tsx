@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, MapPinned, Sparkles } from "lucide-react";
+import { ArrowRight, Check, MapPinned } from "lucide-react";
 
 import { cn, formatPriceLevel, starsFromRating } from "@/lib/utils";
 import { RestaurantPhoto } from "@/components/restaurant-photo";
@@ -307,16 +307,6 @@ export function RouletteWheel({ restaurants, allRestaurants, lists, activeListId
               <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-slate-50">{pool.length}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{currentPoolDescription}</p>
             </div>
-
-            <button
-              type="button"
-              onClick={spin}
-              disabled={!pool.length || isSpinning}
-              className="touch-manipulation relative z-10 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-aurora-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-aurora-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Sparkles className="h-4 w-4" />
-              {isSpinning ? dict.roulette.spinning : dict.roulette.spinButton}
-            </button>
 
             <div className="relative z-10 rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-950">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{dict.roulette.selectedRestaurant}</p>
