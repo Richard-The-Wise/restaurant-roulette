@@ -27,6 +27,12 @@ body {
   color: #0f172a;
 }
 
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  body {
+    padding-top: calc(env(safe-area-inset-top) + 18px);
+  }
+}
+
 .dark body {
   background:
     radial-gradient(circle at top left, rgba(19, 179, 139, 0.12), transparent 30%),
@@ -119,6 +125,16 @@ body {
 }
 
 @layer utilities {
+  .mobile-safe-top {
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+
+  @media (display-mode: standalone), (display-mode: fullscreen) {
+    .mobile-safe-top {
+      padding-top: max(32px, calc(env(safe-area-inset-top) + 20px));
+    }
+  }
+
   .dark .text-slate-950,
   .dark .text-slate-900 {
     color: rgb(248 250 252);

@@ -46,7 +46,7 @@ const dictionaries = {
       lists: "Listas"
     },
     shell: {
-      brandSubtitle: "Tu aplicacion para decidir la siguiente cita",
+      brandSubtitle: "Decide la siguiente cita",
       smartShortlistTitle: "Lista inteligente",
       smartShortlistBody:
         "Trae datos desde Google Places y luego completa con tus notas, visitas, etiquetas y favoritos.",
@@ -312,7 +312,7 @@ const dictionaries = {
       lists: "Lists"
     },
     shell: {
-      brandSubtitle: "Decision support for your next table",
+      brandSubtitle: "Decide the next date",
       smartShortlistTitle: "Smart shortlist",
       smartShortlistBody:
         "Pull details from Google Places, then keep your own notes, visits, tags, and favorites layered on top.",

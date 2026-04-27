@@ -37,7 +37,7 @@ export default async function AppLayout({
   );
 
   return (
-    <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+    <main className="mobile-safe-top mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
       <MobileSidebarDrawer brandSubtitle={dict.shell.brandSubtitle}>{sidebarContent}</MobileSidebarDrawer>
 
       <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
