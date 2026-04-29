@@ -51,9 +51,25 @@ create table if not exists public.restaurants (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.google_places_cache (
+  google_place_id text primary key,
+  google_maps_url text,
+  name text not null,
+  category text not null,
+  cuisine_type text,
+  opening_hours jsonb,
+  rating numeric(2, 1),
+  price_level integer check (price_level between 1 and 5),
+  photo_name text,
+  photo_url text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists restaurants_user_id_idx on public.restaurants(user_id);
 create index if not exists restaurants_list_id_idx on public.restaurants(list_id);
 create index if not exists restaurants_created_at_idx on public.restaurants(created_at desc);
+create index if not exists google_places_cache_updated_at_idx on public.google_places_cache(updated_at desc);
 create index if not exists restaurants_category_idx on public.restaurants(category);
 create index if not exists restaurants_cuisine_type_idx on public.restaurants(cuisine_type);
 create index if not exists restaurants_tags_gin_idx on public.restaurants using gin(tags);
@@ -78,6 +94,12 @@ $$;
 drop trigger if exists restaurants_set_updated_at on public.restaurants;
 create trigger restaurants_set_updated_at
 before update on public.restaurants
+for each row
+execute function public.handle_restaurants_updated_at();
+
+drop trigger if exists google_places_cache_set_updated_at on public.google_places_cache;
+create trigger google_places_cache_set_updated_at
+before update on public.google_places_cache
 for each row
 execute function public.handle_restaurants_updated_at();
 
@@ -153,6 +175,7 @@ alter table public.restaurant_lists enable row level security;
 alter table public.list_memberships enable row level security;
 alter table public.list_invitations enable row level security;
 alter table public.restaurants enable row level security;
+alter table public.google_places_cache enable row level security;
 
 drop policy if exists "Users can view accessible lists" on public.restaurant_lists;
 create policy "Users can view accessible lists"
@@ -285,3 +308,22 @@ create policy "Users can delete restaurants in their lists"
 on public.restaurants
 for delete
 using (public.is_list_member(list_id, auth.uid()));
+
+drop policy if exists "Authenticated users can view places cache" on public.google_places_cache;
+create policy "Authenticated users can view places cache"
+on public.google_places_cache
+for select
+using (auth.uid() is not null);
+
+drop policy if exists "Authenticated users can write places cache" on public.google_places_cache;
+create policy "Authenticated users can write places cache"
+on public.google_places_cache
+for insert
+with check (auth.uid() is not null);
+
+drop policy if exists "Authenticated users can update places cache" on public.google_places_cache;
+create policy "Authenticated users can update places cache"
+on public.google_places_cache
+for update
+using (auth.uid() is not null)
+with check (auth.uid() is not null);

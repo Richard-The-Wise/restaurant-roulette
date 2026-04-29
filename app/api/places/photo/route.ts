@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { GOOGLE_PLACES_CACHE_TTL_MS, fetchGooglePlacePhotoUrl } from "@/lib/google-places";
+import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
+
 const requestSchema = z.object({
   placeId: z.string().min(8),
   width: z.coerce.number().int().min(200).max(1600).optional(),
@@ -50,58 +54,77 @@ export async function GET(request: Request) {
   }
 
   const { placeId, width = 1200, height = 900 } = parsed.data;
+  const supabase = await createClient();
 
   try {
-    const detailsResponse = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
-      method: "GET",
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "photos"
-      },
-      cache: "force-cache"
-    });
+    const { data: cachedPlace } = await supabase
+      .from("google_places_cache")
+      .select("google_place_id,name,category,photo_name,photo_url,updated_at")
+      .eq("google_place_id", placeId)
+      .maybeSingle();
 
-    if (!detailsResponse.ok) {
-      return fallbackSvg("Restaurant Roulette");
+    const isFreshCache =
+      cachedPlace?.updated_at && new Date(cachedPlace.updated_at).getTime() > Date.now() - GOOGLE_PLACES_CACHE_TTL_MS;
+
+    if (cachedPlace?.photo_url && isFreshCache) {
+      return NextResponse.redirect(cachedPlace.photo_url, {
+        headers: {
+          "Cache-Control": "public, max-age=3600, s-maxage=1209600"
+        }
+      });
     }
 
-    const details = (await detailsResponse.json()) as {
-      photos?: Array<{ name?: string }>;
-    };
+    let photoName = cachedPlace?.photo_name ?? null;
+    let placeName = cachedPlace?.name ?? "Restaurant Roulette";
+    let category = cachedPlace?.category ?? "Restaurant";
 
-    const photoName = details.photos?.[0]?.name;
     if (!photoName) {
-      return fallbackSvg("Restaurant Roulette");
+      const detailsResponse = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+        method: "GET",
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "displayName,primaryTypeDisplayName,photos"
+        },
+        cache: "force-cache"
+      });
+
+      if (!detailsResponse.ok) {
+        return fallbackSvg(placeName);
+      }
+
+      const details = (await detailsResponse.json()) as {
+        displayName?: { text?: string };
+        primaryTypeDisplayName?: { text?: string };
+        photos?: Array<{ name?: string }>;
+      };
+
+      photoName = details.photos?.[0]?.name ?? null;
+      placeName = details.displayName?.text ?? placeName;
+      category = details.primaryTypeDisplayName?.text ?? category;
     }
 
-    const mediaUrl = new URL(`https://places.googleapis.com/v1/${photoName}/media`);
-    mediaUrl.searchParams.set("maxWidthPx", String(width));
-    mediaUrl.searchParams.set("maxHeightPx", String(height));
-    mediaUrl.searchParams.set("skipHttpRedirect", "true");
-
-    const mediaResponse = await fetch(mediaUrl.toString(), {
-      method: "GET",
-      headers: {
-        "X-Goog-Api-Key": apiKey
-      },
-      cache: "force-cache"
-    });
-
-    if (!mediaResponse.ok) {
-      return fallbackSvg("Restaurant Roulette");
+    if (!photoName) {
+      return fallbackSvg(placeName);
     }
 
-    const media = (await mediaResponse.json()) as {
-      photoUri?: string;
+    const photoUrl = await fetchGooglePlacePhotoUrl(photoName, apiKey, width, height);
+    if (!photoUrl) {
+      return fallbackSvg(placeName);
+    }
+
+    const cachePayload: Database["public"]["Tables"]["google_places_cache"]["Insert"] = {
+      google_place_id: placeId,
+      name: placeName,
+      category,
+      photo_name: photoName,
+      photo_url: photoUrl
     };
 
-    if (!media.photoUri) {
-      return fallbackSvg("Restaurant Roulette");
-    }
+    await supabase.from("google_places_cache").upsert(cachePayload);
 
-    return NextResponse.redirect(media.photoUri, {
+    return NextResponse.redirect(photoUrl, {
       headers: {
-        "Cache-Control": "public, max-age=3600, s-maxage=86400"
+        "Cache-Control": "public, max-age=3600, s-maxage=1209600"
       }
     });
   } catch {

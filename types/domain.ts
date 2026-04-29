@@ -18,6 +18,23 @@ export interface PlaceLookupResult {
   openingHours: OpeningHoursPayload | null;
   rating: number | null;
   priceLevel: number | null;
+  photoName?: string | null;
+  photoUrl?: string | null;
+  lookupSource?: "local" | "cache" | "google";
+}
+
+export interface GooglePlaceCacheEntry {
+  google_place_id: string;
+  google_maps_url: string | null;
+  name: string;
+  category: string;
+  cuisine_type: string | null;
+  opening_hours: OpeningHoursPayload | null;
+  rating: number | null;
+  price_level: number | null;
+  photo_name?: string | null;
+  photo_url?: string | null;
+  updated_at?: string;
 }
 
 export interface FormState {

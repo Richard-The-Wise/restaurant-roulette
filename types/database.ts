@@ -69,6 +69,49 @@ export interface Database {
         };
         Relationships: [];
       };
+      google_places_cache: {
+        Row: {
+          google_place_id: string;
+          google_maps_url: string | null;
+          name: string;
+          category: string;
+          cuisine_type: string | null;
+          opening_hours: Json | null;
+          rating: number | null;
+          price_level: number | null;
+          photo_name: string | null;
+          photo_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          google_place_id: string;
+          google_maps_url?: string | null;
+          name: string;
+          category: string;
+          cuisine_type?: string | null;
+          opening_hours?: Json | null;
+          rating?: number | null;
+          price_level?: number | null;
+          photo_name?: string | null;
+          photo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          google_maps_url?: string | null;
+          name?: string;
+          category?: string;
+          cuisine_type?: string | null;
+          opening_hours?: Json | null;
+          rating?: number | null;
+          price_level?: number | null;
+          photo_name?: string | null;
+          photo_url?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       restaurant_lists: {
         Row: {
           id: string;

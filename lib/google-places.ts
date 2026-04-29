@@ -2,11 +2,13 @@ import { z } from "zod";
 
 import type { Locale } from "@/lib/i18n";
 import { normalizeWeekdayDescription, titleCase } from "@/lib/utils";
-import type { OpeningHoursPayload, PlaceLookupResult } from "@/types/domain";
+import { isOpeningHoursPayload, type GooglePlaceCacheEntry, type OpeningHoursPayload, type PlaceLookupResult, type Restaurant } from "@/types/domain";
 
 const lookupSchema = z.object({
   input: z.string().min(2)
 });
+
+export const GOOGLE_PLACES_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 
 const PLACE_ID_PATTERN = /^(ChI|Ei|GhI|Iho|Eic)[A-Za-z0-9_-]+$/;
 
@@ -228,7 +230,7 @@ function normalizeOpeningHours(raw: {
   };
 }
 
-export async function lookupRestaurantPlace(rawInput: string, apiKey: string, locale: Locale): Promise<PlaceLookupResult> {
+export async function resolvePlaceLookupInput(rawInput: string, apiKey: string, locale: Locale) {
   const { input } = lookupSchema.parse({ input: rawInput.trim() });
   const resolvedInput = input.startsWith("http") ? await resolveGoogleMapsUrl(input) : input;
 
@@ -242,6 +244,10 @@ export async function lookupRestaurantPlace(rawInput: string, apiKey: string, lo
     throw new Error("No matching Google Place could be found.");
   }
 
+  return { placeId, textQuery };
+}
+
+export async function fetchGooglePlaceDetails(placeId: string, textQuery: string, apiKey: string, locale: Locale): Promise<PlaceLookupResult> {
   const detailsUrl = new URL(`https://places.googleapis.com/v1/places/${placeId}`);
   detailsUrl.searchParams.set("languageCode", locale);
 
@@ -254,16 +260,18 @@ export async function lookupRestaurantPlace(rawInput: string, apiKey: string, lo
     regularOpeningHours?: { weekdayDescriptions?: string[] };
     rating?: number;
     priceLevel?: string | number;
+    photos?: Array<{ name?: string }>;
   }>(detailsUrl.toString(), {
     method: "GET",
     headers: {
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "id,displayName,primaryTypeDisplayName,types,googleMapsUri,regularOpeningHours,rating,priceLevel"
+      "X-Goog-FieldMask": "id,displayName,primaryTypeDisplayName,types,googleMapsUri,regularOpeningHours,rating,priceLevel,photos"
     }
   });
 
   const category = details.primaryTypeDisplayName?.text ?? (locale === "es" ? "Restaurante" : "Restaurant");
   const cuisineType = deriveCuisine(details.types, details.primaryTypeDisplayName?.text ?? null, locale);
+  const photoName = details.photos?.[0]?.name ?? null;
 
   return {
     googlePlaceId: details.id,
@@ -273,6 +281,80 @@ export async function lookupRestaurantPlace(rawInput: string, apiKey: string, lo
     cuisineType,
     openingHours: normalizeOpeningHours(details.regularOpeningHours ?? null, locale),
     rating: typeof details.rating === "number" ? Number(details.rating.toFixed(1)) : null,
-    priceLevel: mapPriceLevel(details.priceLevel)
+    priceLevel: mapPriceLevel(details.priceLevel),
+    photoName,
+    photoUrl: null
   };
+}
+
+export async function lookupRestaurantPlace(rawInput: string, apiKey: string, locale: Locale): Promise<PlaceLookupResult> {
+  const { placeId, textQuery } = await resolvePlaceLookupInput(rawInput, apiKey, locale);
+  return fetchGooglePlaceDetails(placeId, textQuery, apiKey, locale);
+}
+
+export function mapCachedPlaceToLookupResult(entry: GooglePlaceCacheEntry): PlaceLookupResult {
+  return {
+    googlePlaceId: entry.google_place_id,
+    googleMapsUrl: entry.google_maps_url,
+    name: entry.name,
+    category: entry.category,
+    cuisineType: entry.cuisine_type,
+    openingHours: entry.opening_hours,
+    rating: entry.rating,
+    priceLevel: entry.price_level,
+    photoName: entry.photo_name ?? null,
+    photoUrl: entry.photo_url ?? null
+  };
+}
+
+export function mapRestaurantToLookupResult(restaurant: Pick<
+  Restaurant,
+  "google_place_id" | "google_maps_url" | "name" | "category" | "cuisine_type" | "opening_hours" | "rating" | "price_level"
+>): PlaceLookupResult | null {
+  if (!restaurant.google_place_id) {
+    return null;
+  }
+
+  return {
+    googlePlaceId: restaurant.google_place_id,
+    googleMapsUrl: restaurant.google_maps_url,
+    name: restaurant.name,
+    category: restaurant.category,
+    cuisineType: restaurant.cuisine_type,
+    openingHours: isOpeningHoursPayload(restaurant.opening_hours) ? restaurant.opening_hours : null,
+    rating: restaurant.rating,
+    priceLevel: restaurant.price_level,
+    photoName: null,
+    photoUrl: null
+  };
+}
+
+export async function fetchGooglePlacePhotoUrl(
+  photoName: string,
+  apiKey: string,
+  width = 1200,
+  height = 900
+) {
+  const mediaUrl = new URL(`https://places.googleapis.com/v1/${photoName}/media`);
+  mediaUrl.searchParams.set("maxWidthPx", String(width));
+  mediaUrl.searchParams.set("maxHeightPx", String(height));
+  mediaUrl.searchParams.set("skipHttpRedirect", "true");
+
+  const mediaResponse = await fetch(mediaUrl.toString(), {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": apiKey
+    },
+    cache: "force-cache"
+  });
+
+  if (!mediaResponse.ok) {
+    return null;
+  }
+
+  const media = (await mediaResponse.json()) as {
+    photoUri?: string;
+  };
+
+  return media.photoUri ?? null;
 }
