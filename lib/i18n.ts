@@ -266,6 +266,8 @@ const dictionaries = {
       placeLookupFailed: "No se pudieron obtener los detalles del lugar.",
       unauthorized: "No autorizado",
       placesKeyMissing: "GOOGLE_PLACES_API_KEY no esta configurada."
+      ,
+      restaurantAlreadyExists: "Ese restaurante ya existe en esta lista."
     },
     sortOptions: {
       recent: "Mas recientes",
@@ -534,6 +536,8 @@ const dictionaries = {
       placeLookupFailed: "Unable to fetch place details.",
       unauthorized: "Unauthorized",
       placesKeyMissing: "GOOGLE_PLACES_API_KEY is not configured."
+      ,
+      restaurantAlreadyExists: "That restaurant already exists in this list."
     },
     sortOptions: {
       recent: "Recently added",

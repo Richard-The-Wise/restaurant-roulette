@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 import { ACTIVE_LIST_COOKIE, getAccessibleListsForCurrentUser, getPendingInvitationsForCurrentUser } from "@/lib/list-selection";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const createListSchema = z.object({
@@ -42,6 +43,24 @@ function humanizeListError(message: string) {
   }
 
   return message;
+}
+
+function normalizeRestaurantText(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+async function doesAuthUserExistByEmail(email: string) {
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data.users ?? []).some((user) => user.email?.toLowerCase() === email.toLowerCase());
 }
 
 export async function createListAction(formData: FormData) {
@@ -107,6 +126,12 @@ export async function inviteToListAction(formData: FormData) {
 
   if (!user) {
     redirect(buildListsRedirect("error", "Tu sesion expiro. Inicia sesion nuevamente."));
+  }
+
+  const inviteeExists = await doesAuthUserExistByEmail(parsed.data.email);
+
+  if (!inviteeExists) {
+    redirect(buildListsRedirect("error", "No existe una cuenta registrada con ese correo."));
   }
 
   const { error } = await supabase.from("list_invitations").upsert({
@@ -256,23 +281,74 @@ export async function importRestaurantsToListAction(formData: FormData) {
     throw new Error("No restaurants selected");
   }
 
-  const payload = sourceRestaurants.map((restaurant) => ({
-    user_id: user.id,
-    list_id: parsed.target_list_id,
-    google_place_id: restaurant.google_place_id,
-    google_maps_url: restaurant.google_maps_url,
-    name: restaurant.name,
-    category: restaurant.category,
-    cuisine_type: restaurant.cuisine_type,
-    opening_hours: restaurant.opening_hours,
-    rating: restaurant.rating,
-    price_level: restaurant.price_level,
-    visit_count: restaurant.visit_count,
-    last_visited: restaurant.last_visited,
-    notes: restaurant.notes,
-    is_favorite: restaurant.is_favorite,
-    tags: restaurant.tags
-  }));
+  const { data: existingTargetRestaurants, error: existingTargetError } = await supabase
+    .from("restaurants")
+    .select("google_place_id,name,category")
+    .eq("list_id", parsed.target_list_id);
+
+  if (existingTargetError) {
+    throw new Error(existingTargetError.message);
+  }
+
+  const existingGooglePlaceIds = new Set(
+    (existingTargetRestaurants ?? [])
+      .map((restaurant) => restaurant.google_place_id)
+      .filter((value): value is string => Boolean(value))
+  );
+
+  const existingFallbackKeys = new Set(
+    (existingTargetRestaurants ?? []).map((restaurant) =>
+      `${normalizeRestaurantText(restaurant.name)}::${normalizeRestaurantText(restaurant.category)}`
+    )
+  );
+
+  const seenGooglePlaceIds = new Set<string>();
+  const seenFallbackKeys = new Set<string>();
+
+  const payload = sourceRestaurants
+    .filter((restaurant) => {
+      if (restaurant.google_place_id) {
+        if (existingGooglePlaceIds.has(restaurant.google_place_id) || seenGooglePlaceIds.has(restaurant.google_place_id)) {
+          return false;
+        }
+
+        seenGooglePlaceIds.add(restaurant.google_place_id);
+        return true;
+      }
+
+      const fallbackKey = `${normalizeRestaurantText(restaurant.name)}::${normalizeRestaurantText(restaurant.category)}`;
+      if (existingFallbackKeys.has(fallbackKey) || seenFallbackKeys.has(fallbackKey)) {
+        return false;
+      }
+
+      seenFallbackKeys.add(fallbackKey);
+      return true;
+    })
+    .map((restaurant) => ({
+      user_id: user.id,
+      list_id: parsed.target_list_id,
+      google_place_id: restaurant.google_place_id,
+      google_maps_url: restaurant.google_maps_url,
+      name: restaurant.name,
+      category: restaurant.category,
+      cuisine_type: restaurant.cuisine_type,
+      opening_hours: restaurant.opening_hours,
+      rating: restaurant.rating,
+      price_level: restaurant.price_level,
+      visit_count: restaurant.visit_count,
+      last_visited: restaurant.last_visited,
+      notes: restaurant.notes,
+      is_favorite: restaurant.is_favorite,
+      tags: restaurant.tags
+    }));
+
+  if (!payload.length) {
+    revalidatePath("/lists");
+    revalidatePath("/");
+    revalidatePath("/catalog");
+    revalidatePath("/roulette");
+    redirect(buildListsRedirect("success", "No habia restaurantes nuevos para importar."));
+  }
 
   const { error: insertError } = await supabase.from("restaurants").insert(payload);
 
@@ -284,4 +360,10 @@ export async function importRestaurantsToListAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/catalog");
   revalidatePath("/roulette");
+  redirect(
+    buildListsRedirect(
+      "success",
+      payload.length === 1 ? "Se importo 1 restaurante correctamente." : `Se importaron ${payload.length} restaurantes correctamente.`
+    )
+  );
 }

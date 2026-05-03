@@ -8,7 +8,6 @@ import { RestaurantPhoto } from "@/components/restaurant-photo";
 import { getDictionary, getRouletteFilters, type Locale } from "@/lib/i18n";
 import type { Restaurant, RestaurantList } from "@/types/domain";
 
-const wheelColors = ["#13B38B", "#F6BF3E", "#E76F51", "#0F172A", "#30A7D7", "#0A8A6D"];
 const SPIN_DURATION_MS = 4200;
 
 type FilterMode = ReturnType<typeof getRouletteFilters>[number]["value"];
@@ -19,6 +18,19 @@ interface RouletteWheelProps {
   lists: RestaurantList[];
   activeListId: string;
   locale: Locale;
+}
+
+function getWheelColors(count: number) {
+  if (count <= 0) {
+    return [];
+  }
+
+  return Array.from({ length: count }, (_, index) => {
+    const hue = (168 + (360 / count) * index) % 360;
+    const saturation = 72;
+    const lightness = index % 2 === 0 ? 52 : 58;
+    return `hsl(${hue} ${saturation}% ${lightness}%)`;
+  });
 }
 
 function getRoulettePool(
@@ -111,10 +123,11 @@ export function RouletteWheel({ restaurants, allRestaurants, lists, activeListId
     }
 
     const angle = 360 / pool.length;
+    const wheelColors = getWheelColors(pool.length);
     const stops = pool.map((_, index) => {
       const start = index * angle;
       const end = (index + 1) * angle;
-      const color = wheelColors[index % wheelColors.length];
+      const color = wheelColors[index];
       return `${color} ${start}deg ${end}deg`;
     });
 

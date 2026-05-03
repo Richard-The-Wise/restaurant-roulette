@@ -10,6 +10,61 @@ import { createClient } from "@/lib/supabase/server";
 import { parseTags } from "@/lib/utils";
 import type { FormState, OpeningHoursPayload } from "@/types/domain";
 
+function normalizeRestaurantText(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+async function restaurantExistsInList(
+  listId: string,
+  values: {
+    google_place_id?: string | null;
+    name: string;
+    category: string;
+    excludeId?: string;
+  }
+) {
+  const supabase = await createClient();
+
+  if (values.google_place_id) {
+    let query = supabase
+      .from("restaurants")
+      .select("id")
+      .eq("list_id", listId)
+      .eq("google_place_id", values.google_place_id)
+      .limit(5);
+
+    if (values.excludeId) {
+      query = query.neq("id", values.excludeId);
+    }
+
+    const { data } = await query;
+    if (data?.length) {
+      return true;
+    }
+  }
+
+  let candidateQuery = supabase
+    .from("restaurants")
+    .select("id,name,category")
+    .eq("list_id", listId)
+    .ilike("name", values.name)
+    .limit(10);
+
+  if (values.excludeId) {
+    candidateQuery = candidateQuery.neq("id", values.excludeId);
+  }
+
+  const { data: candidates } = await candidateQuery;
+  const normalizedName = normalizeRestaurantText(values.name);
+  const normalizedCategory = normalizeRestaurantText(values.category);
+
+  return (candidates ?? []).some(
+    (candidate) =>
+      normalizeRestaurantText(candidate.name) === normalizedName &&
+      normalizeRestaurantText(candidate.category) === normalizedCategory
+  );
+}
+
 async function getUserScopedRestaurant(restaurantId: string) {
   const supabase = await createClient();
   const {
@@ -148,6 +203,20 @@ export async function updateRestaurantAction(_: FormState, formData: FormData): 
   }
 
   const { supabase, listId } = await getUserScopedRestaurant(parsed.data.restaurant_id);
+
+  const duplicateExists = await restaurantExistsInList(listId, {
+    google_place_id: parsed.data.google_place_id || null,
+    name: parsed.data.name,
+    category: parsed.data.category,
+    excludeId: parsed.data.restaurant_id
+  });
+
+  if (duplicateExists) {
+    return {
+      status: "error",
+      message: dict.formMessages.restaurantAlreadyExists
+    };
+  }
 
   const openingHours = parsed.data.opening_hours
     ? ({

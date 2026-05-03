@@ -27,6 +27,51 @@ const restaurantSchema = z.object({
   tags: z.string().optional().or(z.literal(""))
 });
 
+function normalizeRestaurantText(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+async function restaurantExistsInList(
+  listId: string,
+  values: {
+    google_place_id?: string | null;
+    name: string;
+    category: string;
+  }
+) {
+  const supabase = await createClient();
+
+  if (values.google_place_id) {
+    const { data } = await supabase
+      .from("restaurants")
+      .select("id")
+      .eq("list_id", listId)
+      .eq("google_place_id", values.google_place_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      return true;
+    }
+  }
+
+  const { data: candidates } = await supabase
+    .from("restaurants")
+    .select("id,name,category")
+    .eq("list_id", listId)
+    .ilike("name", values.name)
+    .limit(10);
+
+  const normalizedName = normalizeRestaurantText(values.name);
+  const normalizedCategory = normalizeRestaurantText(values.category);
+
+  return (candidates ?? []).some(
+    (candidate) =>
+      normalizeRestaurantText(candidate.name) === normalizedName &&
+      normalizeRestaurantText(candidate.category) === normalizedCategory
+  );
+}
+
 export async function createRestaurantAction(_: FormState, formData: FormData): Promise<FormState> {
   const locale = await getLocaleFromCookies();
   const dict = getDictionary(locale);
@@ -64,6 +109,19 @@ export async function createRestaurantAction(_: FormState, formData: FormData): 
     return {
       status: "error",
       message: dict.formMessages.sessionExpired
+    };
+  }
+
+  const duplicateExists = await restaurantExistsInList(activeList.id, {
+    google_place_id: parsed.data.google_place_id || null,
+    name: parsed.data.name,
+    category: parsed.data.category
+  });
+
+  if (duplicateExists) {
+    return {
+      status: "error",
+      message: dict.formMessages.restaurantAlreadyExists
     };
   }
 

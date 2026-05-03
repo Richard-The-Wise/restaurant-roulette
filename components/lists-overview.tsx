@@ -109,7 +109,7 @@ export function ListsOverview({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      {isOwner ? (
+                      {membership ? (
                         <button
                           type="button"
                           onClick={() => openImportDialog(list.id)}

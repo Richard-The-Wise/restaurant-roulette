@@ -73,6 +73,9 @@ create index if not exists google_places_cache_updated_at_idx on public.google_p
 create index if not exists restaurants_category_idx on public.restaurants(category);
 create index if not exists restaurants_cuisine_type_idx on public.restaurants(cuisine_type);
 create index if not exists restaurants_tags_gin_idx on public.restaurants using gin(tags);
+create unique index if not exists restaurants_list_google_place_uidx
+  on public.restaurants(list_id, google_place_id)
+  where google_place_id is not null;
 create index if not exists restaurant_lists_created_by_idx on public.restaurant_lists(created_by);
 create unique index if not exists restaurant_lists_personal_owner_uidx
   on public.restaurant_lists(created_by)
